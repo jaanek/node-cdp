@@ -1,42 +1,29 @@
-const Wallet = require('ethereumjs-wallet');
 const Web3 = require('web3');
 const Tx = require('ethereumjs-tx');
+const Wallet = require('ethereumjs-wallet');
 const config = require('./config.js');
-const abi = require('./contracts/abi');
-const addressesJson = require('./contracts/addresses.json');
-
-const TUB_ABI = abi.daiV1.tub;
+const networks = require('./contracts/networks');
 
 // open a new CDP
 async function open(options) {
   const web3 = getWeb3(options);
-  const contractAddress = getContractAddress(getNetworkId(options), 'TUB');
-  console.log(`open. contract address: ${contractAddress}`);
-  const contract = new web3.eth.Contract(TUB_ABI, contractAddress);
+  const ci = getContractInfo('SAI_TUB', options);
+  console.log(`open! address: ${ci.address}, abi: `, ci.abi, ci.length);
+  const contract = new web3.eth.Contract(ci.abi, ci.address);
   const data = contract.methods.open().encodeABI();
   const from = getAddressFromPrivateKey(options.privateKey);
-  const tx = await createSignedTx(from, contractAddress, 0, options.privateKey, data, options);
+  console.log(`open. from: ${from}, to: ${ci.address}, data: `, data);
+  const tx = await createSignedTx(from, ci.address, 0, options.privateKey, data, options);
   const receipt = await sendSignedTransaction(tx.tx, options);
   console.log(`open. tx receipt: `, receipt);
   return receipt;
 }
 
-async function balance(options) {
-  return await getWeb3(options).eth.getBalance(getAddressFromPrivateKey(options.privateKey));
-}
-
 // utility functions
-function getAddressFromPrivateKey(privateKey) {
-  const wallet = Wallet.fromPrivateKey(Buffer.from(privateKey, 'hex'));
-  return wallet.getChecksumAddressString();
-}
-
-function getContractAddress(networkId, contractName) {
-  return addressesJson[networkId][contractName];
-}
-
-function getNetworkId(options) {
-  return options.networkId ? String(options.networkId) : String(config.DEFAULT_NETWORK_ID);
+function getContractInfo(name, options) {
+  const networkName = options.network ? String(options.network) : String(config.DEFAULT_NETWORK);
+  const network = networks[networkName] ? networks[networkName] : networks[config.DEFAULT_NETWORK];
+  return network.contracts[name];
 }
 
 function getWeb3(options) {
@@ -48,6 +35,11 @@ function getWeb3(options) {
   } else {
     return new Web3(new Web3.providers.HttpProvider('https://kovan.infura.io/'));
   }
+}
+
+function getAddressFromPrivateKey(privateKey) {
+  const wallet = Wallet.fromPrivateKey(Buffer.from(privateKey, 'hex'));
+  return wallet.getChecksumAddressString();
 }
 
 async function sendSignedTransaction(tx, options) {
@@ -80,8 +72,19 @@ async function createSignedTx(src, dst, value, privateKey, data, options) {
   };
 }
 
+async function balance(options) {
+  return await getWeb3(options).eth.getBalance(getAddressFromPrivateKey(options.privateKey));
+}
+
+async function generatePrivateKey() {
+  const wallet = Wallet.generate();
+  return wallet.getPrivateKeyString();
+}
+
 module.exports = {
   open,
   balance,
-  getWeb3
+  getWeb3,
+  generatePrivateKey,
+  getAddressFromPrivateKey
 };
