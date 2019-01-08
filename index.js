@@ -6,24 +6,35 @@ const networks = require('./contracts/networks');
 
 // open a new CDP
 async function open(options) {
-  const web3 = getWeb3(options);
-  const ci = getContractInfo('SAI_TUB', options);
-  console.log(`open! address: ${ci.address}, abi: `, ci.abi, ci.length);
-  const contract = new web3.eth.Contract(ci.abi, ci.address);
+  const contract = getContract('SAI_TUB', options);
   const data = contract.methods.open().encodeABI();
   const from = getAddressFromPrivateKey(options.privateKey);
-  console.log(`open. from: ${from}, to: ${ci.address}, data: `, data);
-  const tx = await createSignedTx(from, ci.address, 0, options.privateKey, data, options);
+  console.log(`open. from: ${from}, to: ${contract._address}, data: `, data);
+  const tx = await createSignedTx(from, contract._address, 0, options.privateKey, data, options);
   const receipt = await sendSignedTransaction(tx.tx, options);
   console.log(`open. tx receipt: `, receipt);
   return receipt;
 }
 
+// create weth
+async function createWeth(amount, options) {
+  const contract = getContract('WETH', options);
+  const data = contract.methods.deposit().encodeABI();
+  const from = getAddressFromPrivateKey(options.privateKey);
+  console.log(`create weth. from: ${from}, to: ${contract._address}, data: `, data);
+  const tx = await createSignedTx(from, contract._address, amount, options.privateKey, data, options);
+  const receipt = await sendSignedTransaction(tx.tx, options);
+  console.log(`create weth. tx receipt: `, receipt);
+  return receipt;
+}
+
 // utility functions
-function getContractInfo(name, options) {
+function getContract(name, options) {
+  const web3 = getWeb3(options);
   const networkName = options.network ? String(options.network) : String(config.DEFAULT_NETWORK);
   const network = networks[networkName] ? networks[networkName] : networks[config.DEFAULT_NETWORK];
-  return network.contracts[name];
+  const ci = network.contracts[name];
+  return new web3.eth.Contract(ci.abi, ci.address);
 }
 
 function getWeb3(options) {
@@ -83,6 +94,7 @@ async function generatePrivateKey() {
 
 module.exports = {
   open,
+  createWeth,
   balance,
   getWeb3,
   generatePrivateKey,

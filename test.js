@@ -12,7 +12,8 @@ async function main() {
   // const ethBalance = await cdp.balance(options);
   // console.log(`Eth balance: `, cdp.getWeb3(options).utils.fromWei(String(ethBalance)));
 
-  await cdp.open(options);
+  // await cdp.open(options);
+  await cdp.createWeth(0.01, options);
   // cdpId: 4550
 
 }
